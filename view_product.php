@@ -1,0 +1,15 @@
+<?php
+require "auth.php";
+require "db.php";
+$id = (int)($_GET["id"] ?? 0);
+$stmt = $conn->prepare("SELECT p.*, c.category_name FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.id=? LIMIT 1");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$p = $stmt->get_result()->fetch_assoc();
+if (!$p) { header("Location: products.php?msg=error%20Product%20not%20found"); exit; }
+$img = $p["image"] ?? "";
+$local = $img !== "" && file_exists(__DIR__."/uploads/".basename($img));
+?>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title><?= htmlspecialchars($p["product_name"]) ?> | Product Catalog</title><link rel="stylesheet" href="style.css"></head>
+<body><header class="topbar"><a class="brand" href="index.php"><span class="brand-logo">▦</span><span>Product Catalog</span></a><nav class="nav-links"><a href="index.php">Dashboard</a><a class="active" href="products.php">Products</a><a href="categories.php">Categories</a><a href="user_view.php">User View</a></nav><div class="top-actions"><a class="add-top" href="add_product.php">+ Add Product</a><div class="user-menu"><span class="avatar">A</span><span><?= htmlspecialchars($_SESSION["username"]??"Admin") ?></span><a href="logout.php">Logout</a></div></div></header>
+<main class="container narrow"><div class="page-heading"><div><div class="eyebrow">PRODUCT DETAILS</div><h1><?= htmlspecialchars($p["product_name"]) ?></h1><p>Complete product information.</p></div><a class="btn light" href="products.php">← Back</a></div><section class="detail-card"><div class="detail-image"><?php if($local): ?><img src="uploads/<?= htmlspecialchars(basename($img)) ?>" alt="<?= htmlspecialchars($p["product_name"]) ?>"><?php elseif(filter_var($img,FILTER_VALIDATE_URL)): ?><img src="<?= htmlspecialchars($img) ?>" alt="<?= htmlspecialchars($p["product_name"]) ?>"><?php else: ?><div class="image-placeholder">▦</div><?php endif; ?></div><div class="detail-content"><span class="category-pill"><?= htmlspecialchars($p["category_name"]??"Uncategorized") ?></span><h2><?= htmlspecialchars($p["product_name"]) ?></h2><div class="detail-price">₱<?= number_format((float)$p["price"],2) ?></div><div class="detail-row"><b>Stock</b><span><?= (int)$p["stock"] ?> units</span></div><div class="detail-row"><b>Status</b><?php if((int)$p["stock"]===0): ?><span class="stock out">Out of Stock</span><?php elseif((int)$p["stock"]<=5): ?><span class="stock low">Low Stock</span><?php else: ?><span class="stock in">In Stock</span><?php endif; ?></div><div class="detail-row"><b>Added</b><span><?= date("M d, Y h:i A",strtotime($p["created_at"])) ?></span></div><h3>Description</h3><p class="description-large"><?= nl2br(htmlspecialchars($p["description"])) ?></p><div class="form-actions"><a class="btn secondary" href="edit_product.php?id=<?= $id ?>">Edit Product</a><a class="btn danger" href="delete_product.php?id=<?= $id ?>" onclick="return confirm('Delete this product?')">Delete</a></div></div></section></main></body></html>
